@@ -23,8 +23,14 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', 
                                                      usernameVariable: 'DOCKER_USER', 
                                                      passwordVariable: 'DOCKER_PASS')]) {
-                        sh 'chmod +x ./build.sh'
-                        sh "./build.sh ${env.BRANCH_NAME} $DOCKER_USER $DOCKER_PASS"
+                        script {
+                            // Detect branch properly
+                            def branch = env.BRANCH_NAME ?: sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                            echo "Ì¥ñ Branch detected: ${branch}"
+
+                            // Build and push Docker image
+                            sh "./build.sh ${branch} $DOCKER_USER $DOCKER_PASS"
+                        }
                     }
                 }
             }
@@ -36,8 +42,10 @@ pipeline {
                     withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', 
                                                        keyFileVariable: 'EC2_PRIVATE_KEY', 
                                                        usernameVariable: 'EC2_USER')]) {
-                        sh 'chmod +x ./deploy.sh'
-                        sh "./deploy.sh ${env.BRANCH_NAME} $EC2_HOST"
+                        script {
+                            def branch = env.BRANCH_NAME ?: sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                            sh "./deploy.sh ${branch} $EC2_HOST"
+                        }
                     }
                 }
             }
@@ -46,7 +54,7 @@ pipeline {
 
     post {
         success {
-            echo "‚úÖ Pipeline completed successfully for ${env.BRANCH_NAME}!"
+            echo "‚úÖ Pipeline completed successfully for branch ${env.BRANCH_NAME}!"
         }
         failure {
             echo "‚ùå Pipeline failed! Check logs for details."

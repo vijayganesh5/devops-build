@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   react-app:
-    image: "${DOCKER_IMAGE}"  # Set dynamically in deploy.sh
+    image: "${DOCKER_IMAGE}"  # Set dynamically from deploy.sh
     container_name: devops-react
     ports:
       - "80:80"

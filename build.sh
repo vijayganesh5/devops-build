@@ -7,7 +7,13 @@ DOCKER_PASSWORD=$3
 
 set -e
 
-# Determine Docker repo and image tag
+# Safety check: ensure build/ folder exists
+if [ ! -d "build" ]; then
+    echo "‚ùå Error: build/ folder not found in $(pwd)"
+    exit 1
+fi
+
+# Determine Docker repo and tag
 if [ "$BRANCH_NAME" == "dev" ]; then
     DOCKER_REPO="devops-build-dev"
     IMAGE_TAG="latest"
@@ -27,7 +33,7 @@ echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 echo "Ìª†Ô∏è Building Docker image: $FULL_IMAGE ..."
 docker build -t $FULL_IMAGE .
 
-echo "Ì≥§ Pushing Docker image to Docker Hub..."
+echo "ÔøΩÔøΩ Pushing Docker image to Docker Hub..."
 docker push $FULL_IMAGE
 
 echo "‚úÖ Docker image pushed successfully!"
