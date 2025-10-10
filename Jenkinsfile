@@ -1,61 +1,99 @@
 pipeline {
-    agent any
+  agent any
 
-    triggers {
-        githubPush()
+  environment {
+    // ===== User Specific =====
+    DOCKER_USER = "vijayganesh5"
+    DOCKERHUB_CREDENTIALS_ID = "docker-hub-creds"
+    DEV_REPO = "${DOCKER_USER}/devops-build-dev"
+    PROD_REPO = "${DOCKER_USER}/devops-build-prod"
+
+    // ===== AWS EC2 =====
+    DEVOPS_IP = "13.127.173.163"
+    DEVOPS_SSH_CREDS = "ec2-ssh-key"
+
+    // ===== Info =====
+    AWS_ACCOUNT_ID = "377728961900"
+    AWS_REGION = "ap-south-1"
+  }
+
+  stages {
+    stage('Checkout Code') {
+      steps {
+        echo "Ì≥• Checking out source code from GitHub..."
+        checkout scm
+      }
     }
 
-    environment {
-        EC2_HOST = 'ec2-13-127-173-163.ap-south-1.compute.amazonaws.com'
-        DOCKER_USER = 'vijayganesh5' // your Docker Hub username
+    stage('Build Docker Image') {
+      steps {
+        echo "Ìª†Ô∏è Building Docker image..."
+        sh 'docker build -t $DEV_REPO:latest .'
+      }
     }
 
-    stages {
-        stage('Checkout Code') {
-            steps {
-                echo "Ì≥• Checking out source code..."
-                checkout scm
-            }
-        }
+    stage('Push & Deploy to DEV Environment') {
+      when { branch 'dev' }
+      steps {
+        script {
+          echo "Ì∫Ä Starting DEV deployment pipeline..."
 
-        stage('Build and Push Docker Image') {
-            steps {
-                script {
-                    withCredentials([string(credentialsId: 'docker-hub-creds', variable: 'DOCKER_PASS')]) {
-                        // Detect branch properly
-                        def branch = env.BRANCH_NAME ?: sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
-                        echo "Ì¥ñ Branch detected: ${branch}"
+          // Step 1: Push to DockerHub
+          withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}",
+                                            usernameVariable: 'DBUSER',
+                                            passwordVariable: 'DBPASS')]) {
+            sh '''
+              echo "Ì¥ë Logging into Docker Hub..."
+              echo "$DBPASS" | docker login -u "$DBUSER" --password-stdin
+              docker push $DEV_REPO:latest
+              docker logout
+            '''
 
-                        // Build and push Docker image
-                        sh "./build.sh ${branch} $DOCKER_USER $DOCKER_PASS"
-                    }
-                }
-            }
+            // Step 2: Copy and run deploy.sh on EC2
+            echo "Ì≥¶ Deploying DEV image to EC2 ($DEVOPS_IP)..."
+            sh '''
+              scp -o StrictHostKeyChecking=no ./deploy.sh ubuntu@$DEVOPS_IP:/home/ubuntu/deploy.sh
+              ssh -o StrictHostKeyChecking=no ubuntu@$DEVOPS_IP "chmod +x /home/ubuntu/deploy.sh && \
+                DOCKER_USER=$DBUSER DOCKER_PASS=$DBPASS bash /home/ubuntu/deploy.sh dev $DEVOPS_IP"
+            '''
+          }
         }
-
-        stage('Deploy to EC2') {
-            steps {
-                script {
-                    withCredentials([
-                        sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'EC2_KEY')
-                    ]) {
-                        def branch = env.BRANCH_NAME ?: sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
-                        
-                        // Pass Docker credentials and SSH key to deploy.sh
-                        sh "./deploy.sh ${branch} $EC2_HOST $DOCKER_USER $DOCKER_PASS $EC2_KEY"
-                    }
-                }
-            }
-        }
+      }
     }
 
-    post {
-        success {
-            echo "‚úÖ Pipeline completed successfully for branch ${env.BRANCH_NAME}!"
+    stage('Push & Deploy to PROD Environment') {
+      when { branch 'main' }
+      steps {
+        script {
+          echo "Ì∫Ä Starting PROD deployment pipeline..."
+
+          // Step 1: Tag for PROD
+          sh 'docker tag $DEV_REPO:latest $PROD_REPO:latest'
+
+          // Step 2: Push to DockerHub
+          withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}",
+                                            usernameVariable: 'DBUSER',
+                                            passwordVariable: 'DBPASS')]) {
+            sh '''
+              echo "Ì¥ë Logging into Docker Hub..."
+              echo "$DBPASS" | docker login -u "$DBUSER" --password-stdin
+              docker push $PROD_REPO:latest
+              docker logout
+
+              echo "Ì≥¶ Deploying PROD image to EC2 ($DEVOPS_IP)..."
+              scp -o StrictHostKeyChecking=no ./deploy.sh ubuntu@$DEVOPS_IP:/home/ubuntu/deploy.sh
+              ssh -o StrictHostKeyChecking=no ubuntu@$DEVOPS_IP "chmod +x /home/ubuntu/deploy.sh && \
+                DOCKER_USER=$DBUSER DOCKER_PASS=$DBPASS bash /home/ubuntu/deploy.sh main $DEVOPS_IP"
+            '''
+          }
         }
-        failure {
-            echo "‚ùå Pipeline failed! Check logs for details."
-        }
+      }
     }
+  }
+
+  post {
+    success { echo "‚úÖ Jenkins pipeline completed successfully!" }
+    failure { echo "‚ùå Pipeline failed ‚Äî please check logs for details." }
+  }
 }
 

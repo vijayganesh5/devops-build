@@ -1,73 +1,49 @@
-i#!/bin/bash
+#!/bin/bash
+set -e
 
 # Usage: ./deploy.sh <branch_name> <ec2_host>
 BRANCH_NAME=$1
 EC2_HOST=$2
 
-set -e  # Exit immediately on any error
+# DockerHub credentials (passed from Jenkins)
+DOCKER_USER=${DOCKER_USER}
+DOCKER_PASS=${DOCKER_PASS}
 
-# --- Jenkins-injected credentials ---
-DOCKER_USER="$DOCKER_USER"
-DOCKER_PASS="$DOCKER_PASS"
-EC2_USER="$EC2_USER"
-EC2_KEY="$EC2_PRIVATE_KEY"
-
-# --- Safety checks ---
-if [ -z "$BRANCH_NAME" ] || [ -z "$EC2_HOST" ]; then
-    echo "‚ùå Usage: ./deploy.sh <branch_name> <ec2_host>"
-    exit 1
+if [ -z "$DOCKER_USER" ] || [ -z "$DOCKER_PASS" ]; then
+  echo "‚ùå ERROR: Docker credentials not provided. Exiting."
+  exit 1
 fi
 
-if [ -z "$EC2_KEY" ]; then
-    echo "‚ùå Error: EC2 private key not found from Jenkins credentials."
-    exit 1
+# Determine correct image repo
+if [ "$BRANCH_NAME" == "dev" ]; then
+  DOCKER_REPO="${DOCKER_USER}/devops-build-dev"
+elif [ "$BRANCH_NAME" == "main" ] || [ "$BRANCH_NAME" == "master" ]; then
+  DOCKER_REPO="${DOCKER_USER}/devops-build-prod"
+else
+  DOCKER_REPO="${DOCKER_USER}/devops-build-dev"
 fi
 
-# --- Determine Docker image name and tag ---
-case "$BRANCH_NAME" in
-  dev)
-    DOCKER_REPO="devops-build-dev"
-    IMAGE_TAG="latest"
-    ;;
-  main|master)
-    DOCKER_REPO="devops-build-prod"
-    IMAGE_TAG="latest"
-    ;;
-  *)
-    DOCKER_REPO="devops-build-dev"
-    IMAGE_TAG="$BRANCH_NAME"
-    ;;
-esac
+FULL_IMAGE="${DOCKER_REPO}:latest"
 
-FULL_IMAGE="$DOCKER_USER/$DOCKER_REPO:$IMAGE_TAG"
+echo "Ì∫Ä Deploying image: $FULL_IMAGE"
+echo "Ì¥ë Logging into Docker Hub..."
+echo "$DOCKER_PASS" | sudo docker login -u "$DOCKER_USER" --password-stdin
 
-echo "Ì∫Ä Deploying branch '$BRANCH_NAME' to EC2 host: $EC2_HOST"
-echo "Ì≥¶ Using Docker image: $FULL_IMAGE"
+echo "Ìªë Removing any existing container..."
+sudo docker rm -f react-app || true
 
-# --- Create a temporary key file for SSH ---
-TEMP_KEY_FILE=$(mktemp)
-echo "$EC2_KEY" > "$TEMP_KEY_FILE"
-chmod 600 "$TEMP_KEY_FILE"
+echo "Ì≥¶ Pulling latest image..."
+sudo docker pull "$FULL_IMAGE"
 
-# --- Remote deployment via SSH ---
-ssh -o StrictHostKeyChecking=no -i "$TEMP_KEY_FILE" "$EC2_USER@$EC2_HOST" bash << EOF
-    set -e
-    echo "Ì¥ë Logging into Docker Hub..."
-    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+echo "Ì∑π Cleaning up old images..."
+sudo docker system prune -f
 
-    echo "Ì≥• Pulling latest image: $FULL_IMAGE"
-    docker pull "$FULL_IMAGE"
+echo "‚ñ∂Ô∏è Starting new container..."
+sudo docker run -d \
+  --name react-app \
+  -p 80:80 \
+  --restart unless-stopped \
+  "$FULL_IMAGE"
 
-    echo "Ì∑π Cleaning up old container if any..."
-    docker-compose -f docker-compose.yml down || true
-
-    echo "Ì∫Ä Starting new container..."
-    export DOCKER_IMAGE="$FULL_IMAGE"
-    docker-compose -f docker-compose.yml up -d
-
-    echo "‚úÖ Deployment successful!"
-EOF
-
-# --- Cleanup temporary SSH key ---
-rm -f "$TEMP_KEY_FILE"
+echo "‚úÖ Deployment successful! App is live at http://$EC2_HOST/"
 

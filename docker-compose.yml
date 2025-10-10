@@ -1,14 +1,10 @@
-version: "3.8"
+version: '3.8'
 
 services:
   react-app:
-    image: "${DOCKER_IMAGE}"  # Dynamically set from deploy.sh
-    container_name: devops-react
+    image: "${DOCKER_IMAGE:-vijayganesh5/devops-build-dev:latest}"  # Default to DEV image
+    container_name: react-app
     ports:
       - "80:80"
     restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-    # Ensures that if you update the image, it uses the latest version
-    pull_policy: always
 
