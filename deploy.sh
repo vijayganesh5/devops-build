@@ -1,29 +1,31 @@
 #!/bin/bash
+
 set -e
 
-# Check if BRANCH_NAME is passed as an argument, else default to dev
-BRANCH_NAME=${1:-dev}
+BRANCH=$1
 
-CONTAINER_NAME="react-app"
-
-# Determine Docker image based on branch
-if [ "$BRANCH_NAME" == "dev" ]; then
-    IMAGE="vijayganesh5/devops-build-dev:latest"
-elif [ "$BRANCH_NAME" == "master" ]; then
-    IMAGE="vijayganesh5/devops-build-prod:latest"
-else
-    echo "‚ùå Unsupported branch: $BRANCH_NAME"
-    exit 1
+if [ -z "$BRANCH" ]; then
+  echo "‚ùå Usage: ./deploy.sh <branch-name>"
+  exit 1
 fi
 
-echo "Ìªë Stopping old container if exists..."
-docker rm -f $CONTAINER_NAME || true
+echo "Ì∫Ä Deploying $BRANCH build to EC2..."
 
-echo "‚¨áÔ∏è Pulling latest image: $IMAGE"
-docker pull $IMAGE
+# Stop any running containers
+docker stop devops-react || true
+docker rm devops-react || true
 
-echo "Ì∫Ä Starting new container: $CONTAINER_NAME"
-docker run -d --name $CONTAINER_NAME -p 80:80 $IMAGE
+# Pull latest image
+if [ "$BRANCH" == "dev" ]; then
+  docker pull vijayganesh5/devops-build-dev:latest
+  docker run -d -p 80:80 --name devops-react vijayganesh5/devops-build-dev:latest
+elif [ "$BRANCH" == "master" ]; then
+  docker pull vijayganesh5/devops-build-prod:latest
+  docker run -d -p 80:80 --name devops-react vijayganesh5/devops-build-prod:latest
+else
+  echo "‚ùå Unsupported branch. Use 'dev' or 'master' only."
+  exit 1
+fi
 
-echo "‚úÖ Deployment completed successfully for branch: $BRANCH_NAME"
+echo "‚úÖ Deployment successful on EC2!"
 

@@ -1,8 +1,9 @@
-version: "3"
+version: '3.8'
 services:
   react-app:
-    image: vijayganesh5/devops-build:latest
-    container_name: react-app
+    image: vijayganesh5/devops-build-dev:latest
+    container_name: devops-react
     ports:
       - "80:80"
+    restart: always
 

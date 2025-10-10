@@ -8,12 +8,14 @@ pipeline {
     }
 
     triggers {
-        githubPush()
+        githubPush()  // Trigger when changes are pushed to GitHub
     }
 
     stages {
-        stage('Checkout') {
+
+        stage('Checkout Code') {
             steps {
+                echo "Ì≥• Checking out source code..."
                 git branch: "${env.BRANCH_NAME}", url: 'https://github.com/vijayganesh5/devops-build.git'
             }
         }
@@ -38,7 +40,6 @@ pipeline {
             steps {
                 script {
                     echo "Ì≥§ Pushing image to DockerHub..."
-
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerhub') {
                         if (env.BRANCH_NAME == 'dev') {
                             docker.image("${DEV_REPO}:latest").push()
@@ -53,8 +54,11 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    echo "Ì∫Ä Deploying to EC2..."
-                    sh './deploy.sh'
+                    echo "Ì∫Ä Deploying ${env.BRANCH_NAME} build to EC2..."
+
+                    // Deploy using your deploy script
+                    sh "chmod +x ./deploy.sh"
+                    sh "./deploy.sh ${env.BRANCH_NAME}"
                 }
             }
         }
@@ -62,10 +66,10 @@ pipeline {
 
     post {
         success {
-            echo "‚úÖ Pipeline completed successfully!"
+            echo "‚úÖ Pipeline completed successfully for ${env.BRANCH_NAME}!"
         }
         failure {
-            echo "‚ùå Pipeline failed. Please check the logs."
+            echo "‚ùå Pipeline failed! Please check the logs for errors."
         }
     }
 }
