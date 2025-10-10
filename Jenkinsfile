@@ -16,6 +16,9 @@ pipeline {
       steps {
         checkout scm
         echo "Source code checked out successfully."
+        // Debug: Print branch information
+        sh 'echo "Current branch: $BRANCH_NAME"'
+        sh 'git branch -a'
       }
     }
 
@@ -26,9 +29,18 @@ pipeline {
     }
 
     stage('Push & Deploy Dev') {
-      when { branch 'dev' }
+      when { 
+        anyOf {
+          branch 'dev'
+          branch 'origin/dev'
+          expression { env.GIT_BRANCH == 'origin/dev' }
+          expression { env.BRANCH_NAME == 'dev' }
+        }
+      }
       steps {
         script {
+          echo "Running Push & Deploy Dev on branch: ${env.BRANCH_NAME}"
+          
           // 1. PUSH TO DOCKERHUB DEV REPO
           echo "1. Pushing to DockerHub DEV repo..."
           withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}", usernameVariable: 'DBUSER', passwordVariable: 'DBPASS')]) {
@@ -49,9 +61,20 @@ pipeline {
     }
 
     stage('Push & Deploy Prod') {
-      when { branch 'main' } 
+      when { 
+        anyOf {
+          branch 'main'
+          branch 'master' 
+          branch 'origin/main'
+          branch 'origin/master'
+          expression { env.GIT_BRANCH == 'origin/main' }
+          expression { env.BRANCH_NAME == 'main' }
+        }
+      }
       steps {
         script {
+          echo "Running Push & Deploy Prod on branch: ${env.BRANCH_NAME}"
+          
           // 1. TAG FOR PROD
           echo "1. Tagging DEV image for PROD repo..."
           sh 'docker tag $DEV_REPO:latest $PROD_REPO:latest'
