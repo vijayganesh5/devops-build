@@ -39,7 +39,7 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    withCredentials([sshUserPrivateKey(credentialsId: 'devopsbuildkey.pem', 
+                    withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', 
                                                        keyFileVariable: 'EC2_PRIVATE_KEY', 
                                                        usernameVariable: 'EC2_USER')]) {
                         script {
