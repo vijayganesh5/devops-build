@@ -7,6 +7,7 @@ pipeline {
 
     environment {
         EC2_HOST = 'ec2-13-127-173-163.ap-south-1.compute.amazonaws.com'
+        DOCKER_USER = 'vijayganesh5' // your Docker Hub username
     }
 
     stages {
@@ -20,17 +21,13 @@ pipeline {
         stage('Build and Push Docker Image') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', 
-                                                     usernameVariable: 'DOCKER_USER', 
-                                                     passwordVariable: 'DOCKER_PASS')]) {
-                        script {
-                            // Detect branch properly
-                            def branch = env.BRANCH_NAME ?: sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
-                            echo "í´– Branch detected: ${branch}"
+                    withCredentials([string(credentialsId: 'docker-hub-pass', variable: 'DOCKER_PASS')]) {
+                        // Detect branch properly
+                        def branch = env.BRANCH_NAME ?: sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                        echo "í´– Branch detected: ${branch}"
 
-                            // Build and push Docker image
-                            sh "./build.sh ${branch} $DOCKER_USER $DOCKER_PASS"
-                        }
+                        // Build and push Docker image
+                        sh "./build.sh ${branch} $DOCKER_USER $DOCKER_PASS"
                     }
                 }
             }
@@ -39,13 +36,13 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', 
-                                                       keyFileVariable: 'EC2_PRIVATE_KEY', 
-                                                       usernameVariable: 'EC2_USER')]) {
-                        script {
-                            def branch = env.BRANCH_NAME ?: sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
-                            sh "./deploy.sh ${branch} $EC2_HOST"
-                        }
+                    withCredentials([
+                        sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'EC2_KEY')
+                    ]) {
+                        def branch = env.BRANCH_NAME ?: sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                        
+                        // Pass Docker credentials and SSH key to deploy.sh
+                        sh "./deploy.sh ${branch} $EC2_HOST $DOCKER_USER $DOCKER_PASS $EC2_KEY"
                     }
                 }
             }
