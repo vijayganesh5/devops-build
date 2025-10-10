@@ -16,9 +16,11 @@ pipeline {
       steps {
         checkout scm
         echo "Source code checked out successfully."
-        // Debug: Print branch information
-        sh 'echo "Current branch: $BRANCH_NAME"'
-        sh 'git branch -a'
+        script {
+          // Set branch name properly
+          env.BRANCH_NAME = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+          echo "Current branch: ${env.BRANCH_NAME}"
+        }
       }
     }
 
@@ -32,8 +34,6 @@ pipeline {
       when { 
         anyOf {
           branch 'dev'
-          branch 'origin/dev'
-          expression { env.GIT_BRANCH == 'origin/dev' }
           expression { env.BRANCH_NAME == 'dev' }
         }
       }
@@ -54,7 +54,10 @@ pipeline {
           // 2. DEPLOY DEV IMAGE VIA SSH
           echo "2. Deploying DEV image to DevOps EC2 at $DEVOPS_IP..."
           sshagent(credentials: ["${DEVOPS_SSH_CREDS}"]) { 
-            sh "ssh -o StrictHostKeyChecking=no ubuntu@$DEVOPS_IP 'cd ~/project && docker-compose down && docker-compose up -d'"
+            sh """
+              # Pull latest image and deploy
+              ssh -o StrictHostKeyChecking=no ubuntu@$DEVOPS_IP 'cd ~/devops-build && docker-compose pull && docker-compose down && docker-compose up -d'
+            """
           }
         }
       }
@@ -64,11 +67,7 @@ pipeline {
       when { 
         anyOf {
           branch 'main'
-          branch 'master' 
-          branch 'origin/main'
-          branch 'origin/master'
-          expression { env.GIT_BRANCH == 'origin/main' }
-          expression { env.BRANCH_NAME == 'main' }
+          branch 'master'
         }
       }
       steps {
@@ -80,7 +79,7 @@ pipeline {
           sh 'docker tag $DEV_REPO:latest $PROD_REPO:latest'
           
           // 2. PUSH TO DOCKERHUB PROD REPO
-          echo "2. Pushing to DockerHub PROD private repo..."
+          echo "2. Pushing to DockerHub PROD repo..."
           withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}", usernameVariable: 'DBUSER', passwordVariable: 'DBPASS')]) {
             sh '''
               echo "$DBPASS" | docker login -u "$DBUSER" --password-stdin
@@ -89,10 +88,25 @@ pipeline {
             '''
           }
           
-          // 3. DEPLOY PROD IMAGE VIA SSH
-          echo "3. Deploying PROD image to DevOps EC2 at $DEVOPS_IP..."
+          // 3. CREATE docker-compose.prod.yml AND DEPLOY
+          echo "3. Deploying PROD image to DevOps EC2..."
           sshagent(credentials: ["${DEVOPS_SSH_CREDS}"]) { 
-            sh "ssh -o StrictHostKeyChecking=no ubuntu@$DEVOPS_IP 'cd ~/project && docker-compose -f docker-compose.prod.yml down && docker-compose -f docker-compose.prod.yml up -d'" 
+            sh """
+              # Create production docker-compose file
+              ssh -o StrictHostKeyChecking=no ubuntu@$DEVOPS_IP 'cat > ~/devops-build/docker-compose.prod.yml << EOF
+version: '3'
+services:
+  react-app-prod:
+    image: ${PROD_REPO}:latest
+    ports:
+      - "80:80"
+    container_name: react-app-prod
+    restart: unless-stopped
+EOF'
+              
+              # Deploy production container
+              ssh -o StrictHostKeyChecking=no ubuntu@$DEVOPS_IP 'cd ~/devops-build && docker-compose -f docker-compose.prod.yml pull && docker-compose -f docker-compose.prod.yml down && docker-compose -f docker-compose.prod.yml up -d'
+            """
           }
         }
       }
