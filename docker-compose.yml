@@ -1,0 +1,8 @@
+version: "3"
+services:
+  react-app:
+    image: vijayganesh5/devops-build:latest
+    container_name: react-app
+    ports:
+      - "80:80"
+
