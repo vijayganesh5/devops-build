@@ -17,8 +17,8 @@ pipeline {
         checkout scm
         echo "Source code checked out successfully."
         script {
-          // Set branch name properly
-          env.BRANCH_NAME = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+          // Better branch detection for multibranch pipelines
+          env.BRANCH_NAME = env.BRANCH_NAME ?: sh(script: 'echo ${GIT_BRANCH##*/}', returnStdout: true).trim()
           echo "Current branch: ${env.BRANCH_NAME}"
         }
       }
@@ -32,9 +32,8 @@ pipeline {
 
     stage('Push & Deploy Dev') {
       when { 
-        anyOf {
-          branch 'dev'
-          expression { env.BRANCH_NAME == 'dev' }
+        expression { 
+          return (env.BRANCH_NAME == 'dev' || env.GIT_BRANCH == 'origin/dev')
         }
       }
       steps {
@@ -65,9 +64,8 @@ pipeline {
 
     stage('Push & Deploy Prod') {
       when { 
-        anyOf {
-          branch 'main'
-          branch 'master'
+        expression { 
+          return (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master' || env.GIT_BRANCH == 'origin/main')
         }
       }
       steps {
