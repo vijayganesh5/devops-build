@@ -17,7 +17,6 @@ pipeline {
         checkout scm
         echo "Source code checked out successfully."
         script {
-          // Better branch detection for multibranch pipelines
           env.BRANCH_NAME = env.BRANCH_NAME ?: sh(script: 'echo ${GIT_BRANCH##*/}', returnStdout: true).trim()
           echo "Current branch: ${env.BRANCH_NAME}"
         }
@@ -54,8 +53,15 @@ pipeline {
           echo "2. Deploying DEV image to DevOps EC2 at $DEVOPS_IP..."
           sshagent(credentials: ["${DEVOPS_SSH_CREDS}"]) { 
             sh """
-              # Pull latest image and deploy
-              ssh -o StrictHostKeyChecking=no ubuntu@$DEVOPS_IP 'cd ~/devops-build && docker-compose pull && docker-compose down && docker-compose up -d'
+              # Force deployment with port conflict resolution
+              ssh -o StrictHostKeyChecking=no ubuntu@$DEVOPS_IP '
+                cd ~/devops-build && 
+                docker-compose down && 
+                # Kill any process using port 80
+                sudo fuser -k 80/tcp 2>/dev/null || true &&
+                sleep 2 &&
+                docker-compose up -d
+              '
             """
           }
         }
@@ -97,7 +103,7 @@ services:
   react-app-prod:
     image: ${PROD_REPO}:latest
     ports:
-      - "80:80"
+      - "8080:80"
     container_name: react-app-prod
     restart: unless-stopped
 EOF'

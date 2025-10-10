@@ -1,8 +1,8 @@
 version: '3'
 services:
   react-app:
-    image: vijayganesh5/devops-build-dev:latest  # Use pre-built image from Docker Hub
+    image: vijayganesh5/devops-build-dev:latest
     ports:
-      - "80:80"
+      - "8080:80"  # Map host port 8080 to container port 80
     container_name: react-app
     restart: unless-stopped
