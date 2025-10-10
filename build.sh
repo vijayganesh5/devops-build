@@ -12,3 +12,4 @@ docker push $IMAGE_NAME:$TAG
 
 echo "Build and push completed successfully!"
 
+# Created by Vijay Ganesh
