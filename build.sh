@@ -1,47 +1,34 @@
 #!/bin/bash
 
+# Usage: ./build.sh <branch_name> <docker_username> <docker_password>
+BRANCH_NAME=$1
+DOCKER_USERNAME=$2
+DOCKER_PASSWORD=$3
+
 set -e
 
-# Configuration
-DOCKERHUB_USER="vijayganesh5"
-DEV_REPO="vijayganesh5/devops-build-dev"
-PROD_REPO="vijayganesh5/devops-build-prod"
-
-# Branch-based tagging
-BRANCH=$1
-
-if [ -z "$BRANCH" ]; then
-  echo "‚ùå Usage: ./build.sh <branch-name>"
-  exit 1
-fi
-
-echo "Ì∫Ä Building Docker image for branch: $BRANCH"
-
-# Build the Docker image
-if [ "$BRANCH" == "dev" ]; then
-  echo "Ì¥® Building development image..."
-  docker build -t $DEV_REPO:latest .
-  echo "‚úÖ Development image built successfully"
-elif [ "$BRANCH" == "master" ]; then
-  echo "Ì¥® Building production image..."
-  docker build -t $PROD_REPO:latest .
-  echo "‚úÖ Production image built successfully"
+# Determine Docker repo and image tag
+if [ "$BRANCH_NAME" == "dev" ]; then
+    DOCKER_REPO="devops-build-dev"
+    IMAGE_TAG="latest"
+elif [ "$BRANCH_NAME" == "master" ]; then
+    DOCKER_REPO="devops-build-prod"
+    IMAGE_TAG="latest"
 else
-  echo "‚ùå Unsupported branch: $BRANCH. Use 'dev' or 'master' only."
-  exit 1
+    DOCKER_REPO="devops-build-dev"
+    IMAGE_TAG="$BRANCH_NAME"
 fi
 
-echo "Ì¥ë Logging in to Docker Hub..."
-# Use the environment variable passed from Jenkins
-echo "$DOCKER_PASSWORD" | docker login -u "$DOCKERHUB_USER" --password-stdin
+FULL_IMAGE="$DOCKER_USERNAME/$DOCKER_REPO:$IMAGE_TAG"
 
-echo "Ì≥§ Pushing image to Docker Hub..."
-if [ "$BRANCH" == "dev" ]; then
-  docker push $DEV_REPO:latest
-  echo "‚úÖ Development image pushed to Docker Hub"
-else
-  docker push $PROD_REPO:latest
-  echo "‚úÖ Production image pushed to Docker Hub"
-fi
+echo "Ì¥ë Logging into Docker Hub..."
+echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
-echo "‚úÖ Image successfully built and pushed for $BRANCH branch!"
+echo "Ìª†Ô∏è Building Docker image: $FULL_IMAGE ..."
+docker build -t $FULL_IMAGE .
+
+echo "Ì≥§ Pushing Docker image to Docker Hub..."
+docker push $FULL_IMAGE
+
+echo "‚úÖ Docker image pushed successfully!"
+

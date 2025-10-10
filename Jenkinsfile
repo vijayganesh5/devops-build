@@ -1,12 +1,12 @@
 pipeline {
     agent any
 
-    environment {
-        DOCKERHUB_CREDENTIALS = credentials('docker-hub-creds')
-    }
-
     triggers {
         githubPush()
+    }
+
+    environment {
+        EC2_HOST = 'ec2-13-127-173-163.ap-south-1.compute.amazonaws.com'
     }
 
     stages {
@@ -20,12 +20,11 @@ pipeline {
         stage('Build and Push Docker Image') {
             steps {
                 script {
-                    echo "Ìª†Ô∏è Building and pushing Docker image for branch: ${env.BRANCH_NAME}"
-                    
-                    // Set Docker password from credentials
-                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        sh "chmod +x ./build.sh"
-                        sh "DOCKER_PASSWORD='${DOCKER_PASSWORD}' ./build.sh ${env.BRANCH_NAME}"
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', 
+                                                     usernameVariable: 'DOCKER_USER', 
+                                                     passwordVariable: 'DOCKER_PASS')]) {
+                        sh 'chmod +x ./build.sh'
+                        sh "./build.sh ${env.BRANCH_NAME} $DOCKER_USER $DOCKER_PASS"
                     }
                 }
             }
@@ -34,9 +33,12 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    echo "Ì∫Ä Deploying ${env.BRANCH_NAME} build to EC2..."
-                    sh "chmod +x ./deploy.sh"
-                    sh "./deploy.sh ${env.BRANCH_NAME}"
+                    withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', 
+                                                       keyFileVariable: 'EC2_PRIVATE_KEY', 
+                                                       usernameVariable: 'EC2_USER')]) {
+                        sh 'chmod +x ./deploy.sh'
+                        sh "./deploy.sh ${env.BRANCH_NAME} $EC2_HOST"
+                    }
                 }
             }
         }
@@ -47,7 +49,8 @@ pipeline {
             echo "‚úÖ Pipeline completed successfully for ${env.BRANCH_NAME}!"
         }
         failure {
-            echo "‚ùå Pipeline failed! Please check the logs for errors."
+            echo "‚ùå Pipeline failed! Check logs for details."
         }
     }
 }
+

@@ -1,9 +1,9 @@
 version: '3.8'
 services:
   react-app:
-    image: vijayganesh5/devops-build-dev:latest
+    image: "${DOCKER_IMAGE}"  # Set dynamically in deploy.sh
     container_name: devops-react
     ports:
       - "80:80"
-    restart: always
+    restart: unless-stopped
 

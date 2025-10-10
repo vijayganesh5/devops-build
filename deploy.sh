@@ -1,49 +1,50 @@
 #!/bin/bash
 
+# Usage: ./deploy.sh <branch_name> <ec2_host>
+BRANCH_NAME=$1
+EC2_HOST=$2
+
 set -e
 
-BRANCH=$1
+# Docker Hub credentials from Jenkins
+DOCKER_USER=${DOCKER_USER}
+DOCKER_PASS=${DOCKER_PASS}
 
-if [ -z "$BRANCH" ]; then
-  echo "‚ùå Usage: ./deploy.sh <branch-name>"
-  exit 1
-fi
+# EC2 SSH credentials from Jenkins
+EC2_USER=${EC2_USER}
+EC2_KEY=${EC2_PRIVATE_KEY}
 
-echo "Ì∫Ä Deploying $BRANCH build to EC2..."
-
-# Stop any running containers
-echo "Ìªë Stopping any existing container..."
-docker stop devops-react || true
-docker rm devops-react || true
-
-# Pull latest image
-if [ "$BRANCH" == "dev" ]; then
-  echo "Ì≥• Pulling latest dev image..."
-  docker pull vijayganesh5/devops-build-dev:latest
-  echo "Ì∞≥ Starting dev container..."
-  docker run -d -p 80:80 --name devops-react vijayganesh5/devops-build-dev:latest
-elif [ "$BRANCH" == "master" ]; then
-  echo "Ì≥• Pulling latest prod image..."
-  docker pull vijayganesh5/devops-build-prod:latest
-  echo "Ì∞≥ Starting prod container..."
-  docker run -d -p 80:80 --name devops-react vijayganesh5/devops-build-prod:latest
+# Determine Docker repo and tag
+if [ "$BRANCH_NAME" == "dev" ]; then
+    DOCKER_REPO="devops-build-dev"
+    IMAGE_TAG="latest"
+elif [ "$BRANCH_NAME" == "master" ]; then
+    DOCKER_REPO="devops-build-prod"
+    IMAGE_TAG="latest"
 else
-  echo "‚ùå Unsupported branch: $BRANCH. Use 'dev' or 'master' only."
-  exit 1
+    DOCKER_REPO="devops-build-dev"
+    IMAGE_TAG="$BRANCH_NAME"
 fi
 
-# Wait for container to start
-echo "‚è≥ Waiting for container to start..."
-sleep 5
+FULL_IMAGE="$DOCKER_USER/$DOCKER_REPO:$IMAGE_TAG"
 
-# Verify deployment
-if docker ps | grep -q devops-react; then
-    echo "‚úÖ Deployment successful! Application is running on port 80"
-    echo "Ì≥ä Container status:"
-    docker ps | grep devops-react
-else
-    echo "‚ùå Deployment failed - container not running!"
-    echo "Ì¥ç Checking container logs:"
-    docker logs devops-react || true
-    exit 1
-fi
+echo "Ì∫Ä Deploying branch $BRANCH_NAME to EC2 ($EC2_HOST) with image: $FULL_IMAGE ..."
+
+ssh -o StrictHostKeyChecking=no -i "$EC2_KEY" $EC2_USER@$EC2_HOST << EOF
+    set -e
+    echo "Ì¥ë Logging into Docker Hub..."
+    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+    echo "Ì≥• Pulling Docker image: $FULL_IMAGE"
+    docker pull $FULL_IMAGE
+
+    # Stop old container using docker-compose if exists
+    export DOCKER_IMAGE=$FULL_IMAGE
+    docker-compose -f docker-compose.yml down || true
+
+    echo "‚ñ∂Ô∏è Starting new container using docker-compose..."
+    docker-compose -f docker-compose.yml up -d
+
+    echo "‚úÖ Deployment finished!"
+EOF
+
