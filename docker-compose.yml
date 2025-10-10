@@ -1,10 +1,7 @@
-version: '3.8'
-
+version: '3'
 services:
   react-app:
-    image: "${DOCKER_IMAGE:-vijayganesh5/devops-build-dev:latest}"  # Default to DEV image
-    container_name: react-app
+    build: .
     ports:
       - "80:80"
-    restart: unless-stopped
-
+    container_name: react-app

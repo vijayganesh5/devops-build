@@ -1,18 +1,11 @@
-# Use official lightweight Nginx image
+# Use official nginx image
 FROM nginx:alpine
 
-# Set working directory
-WORKDIR /usr/share/nginx/html
+# Copy build files into nginx html folder
+COPY build/ /usr/share/nginx/html/
 
-# Remove default nginx static assets
-RUN rm -rf ./*
-
-# Copy pre-built React app files
-COPY build/ .
-
-# Expose port 80 for the container
+# Expose port 80
 EXPOSE 80
 
-# Start Nginx
+# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
-

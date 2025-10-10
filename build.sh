@@ -1,17 +1,11 @@
 #!/bin/bash
-set -e
 
+# Variables
 DOCKER_USER="vijayganesh5"
-IMAGE_NAME="devops-build-dev"
+IMAGE_NAME="react-app"
 
-echo "Ìª†Ô∏è Building Docker image..."
-docker build -t $DOCKER_USER/$IMAGE_NAME:latest .
+# Build the image
+docker build -t $DOCKER_USER/devops-build-dev:latest .
 
-echo "Ì¥ë Logging into Docker Hub..."
-docker login -u "$DOCKER_USER"
-
-echo "Ì≥§ Pushing image to Docker Hub..."
-docker push $DOCKER_USER/$IMAGE_NAME:latest
-
-echo "‚úÖ Image pushed successfully!"
-
+# Push to DockerHub dev repo
+docker push $DOCKER_USER/devops-build-dev:latest
