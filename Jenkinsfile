@@ -7,7 +7,7 @@ pipeline {
     DEV_REPO = "${DOCKER_USER}/devops-build-dev"
     PROD_REPO = "${DOCKER_USER}/devops-build-prod"
     
-    DEVOPS_IP = "65.2.146.205"
+    DEVOPS_IP = "13.233.206.73"
     DEVOPS_SSH_CREDS = "ec2-ssh-key"
   }
 
@@ -63,7 +63,7 @@ pipeline {
                 docker rm react-app 2>/dev/null || true
                 
                 # Run new container on port 80
-                docker run -d -p 80:80 --name react-app ${DEV_REPO}:latest
+                docker run -d -p 3000:3000 --name react-app ${DEV_REPO}:latest
                 
                 # Verify container is running
                 echo "Container status:"
@@ -113,7 +113,7 @@ pipeline {
                 docker rm react-app-prod 2>/dev/null || true
                 
                 # Run prod container on port 3000
-                docker run -d -p 3000:80 --name react-app-prod ${PROD_REPO}:latest
+                docker run -d -p 80:80 --name react-app-prod ${PROD_REPO}:latest
                 
                 # Verify container is running
                 echo "Prod container status:"
