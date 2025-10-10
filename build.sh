@@ -32,6 +32,7 @@ else
 fi
 
 echo "í´‘ Logging in to Docker Hub..."
+# Use the environment variable passed from Jenkins
 echo "$DOCKER_PASSWORD" | docker login -u "$DOCKERHUB_USER" --password-stdin
 
 echo "í³¤ Pushing image to Docker Hub..."

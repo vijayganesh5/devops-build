@@ -2,11 +2,11 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_PASSWORD = credentials('docker-hub-creds')
+        DOCKERHUB_CREDENTIALS = credentials('docker-hub-creds')
     }
 
     triggers {
-        pollSCM('* * * * *')
+        githubPush()
     }
 
     stages {
@@ -21,8 +21,12 @@ pipeline {
             steps {
                 script {
                     echo "Ìª†Ô∏è Building and pushing Docker image for branch: ${env.BRANCH_NAME}"
-                    sh "chmod +x ./build.sh"
-                    sh "./build.sh ${env.BRANCH_NAME}"
+                    
+                    // Set Docker password from credentials
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh "chmod +x ./build.sh"
+                        sh "DOCKER_PASSWORD='${DOCKER_PASSWORD}' ./build.sh ${env.BRANCH_NAME}"
+                    }
                 }
             }
         }
