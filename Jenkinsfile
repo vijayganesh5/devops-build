@@ -49,11 +49,11 @@ pipeline {
             '''
           }
           
-          // 2. DEPLOY DEV IMAGE VIA SSH (Using direct docker commands)
+          // 2. DEPLOY DEV IMAGE VIA SSH
           echo "2. Deploying DEV image to DevOps EC2 at $DEVOPS_IP..."
           sshagent(credentials: ["${DEVOPS_SSH_CREDS}"]) { 
             sh """
-              # Deploy using direct docker commands to avoid timeout issues
+              # Deploy using direct docker commands
               ssh -o StrictHostKeyChecking=no ubuntu@$DEVOPS_IP '
                 # Pull the latest image
                 docker pull ${DEV_REPO}:latest
@@ -62,7 +62,7 @@ pipeline {
                 docker stop react-app 2>/dev/null || true
                 docker rm react-app 2>/dev/null || true
                 
-                # Run new container
+                # Run new container on port 80
                 docker run -d -p 80:80 --name react-app ${DEV_REPO}:latest
                 
                 # Verify container is running
@@ -99,11 +99,11 @@ pipeline {
             '''
           }
           
-          // 3. DEPLOY PROD IMAGE
-          echo "3. Deploying PROD image to DevOps EC2..."
+          // 3. DEPLOY PROD IMAGE VIA SSH
+          echo "3. Deploying PROD image to DevOps EC2 at $DEVOPS_IP..."
           sshagent(credentials: ["${DEVOPS_SSH_CREDS}"]) { 
             sh """
-              # Deploy production using direct docker commands
+              # Deploy production using port 3000 (to avoid conflict with Jenkins on 8080)
               ssh -o StrictHostKeyChecking=no ubuntu@$DEVOPS_IP '
                 # Pull the latest prod image
                 docker pull ${PROD_REPO}:latest
@@ -112,8 +112,8 @@ pipeline {
                 docker stop react-app-prod 2>/dev/null || true
                 docker rm react-app-prod 2>/dev/null || true
                 
-                # Run prod container on different port (e.g., 8080)
-                docker run -d -p 8080:80 --name react-app-prod ${PROD_REPO}:latest
+                # Run prod container on port 3000
+                docker run -d -p 3000:80 --name react-app-prod ${PROD_REPO}:latest
                 
                 # Verify container is running
                 echo "Prod container status:"
