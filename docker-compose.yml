@@ -1,8 +1,26 @@
-version: '3'
+version: '3.8'
+
 services:
+  # Development Environment - React App
   react-app:
     image: vijayganesh5/devops-build-dev:latest
     ports:
-      - "8080:80"  # Map host port 8080 to container port 80
+      - "80:80"
     container_name: react-app
     restart: unless-stopped
+    networks:
+      - app-network
+
+  # Production Environment - React App  
+  react-app-prod:
+    image: vijayganesh5/devops-build-prod:latest
+    ports:
+      - "3000:80"
+    container_name: react-app-prod
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
