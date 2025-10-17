@@ -1,4 +1,4 @@
-# 🛍️ ReactJS E-Commerce Application - The Ultimate CI/CD Adventure!
+# 🛍️ ReactJS E-Commerce Application - The Ultimate CI/CD Adventure
 
 ## 🎯 Project Overview
 Welcome to the **ReactJS E-Commerce Application** - where shopping meets cutting-edge DevOps magic! This isn't just another deployment; it's a full-blown CI/CD extravaganza that transforms your code into a live, scalable e-commerce platform. Get ready to automate, deploy, and conquer! 🚀
@@ -15,7 +15,7 @@ Registry: Docker Hub 📦
 
 ## 🎨 Architecture Flow - The Magic Pipeline
 ```
-GitHub 💻 → Jenkins 🏗️ → Docker Hub 🐳 → AWS EC2 ⚡ → Live Shopping! 🛒
+GitHub 💻 → Jenkins 🏗️ → Docker Hub 🐳 → AWS EC2 ⚡ → Live Shopping 🛒
     ↓           ↓           ↓           ↓           ↓
  Code Push   Auto-Build  Image Store  Cloud Deploy  Customers Happy!
 ```
