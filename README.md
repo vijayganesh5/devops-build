@@ -254,8 +254,16 @@ post {
 
 ---
 
-**🎉 Congratulations!** You've just deployed a fully automated e-commerce platform that can handle anything from code changes to customer traffic! 
+**🎉 Congratulations!** You've just deployed a fully automated e-commerce platform that can handle anything from code changes to customer traffic!!
+
+---
+
+## 🎉 Output Link with Screenshots:
+- https://docs.google.com/document/d/1fpwPcnaRovhQW89hqSQJC3TWvqqRrM2nAyF0agKSiT4/edit?usp=sharing
+
+---
 
 *Built with ❤️ by Vijay Ganesh - Turning React code into shopping magic, one deployment at a time!*
 
 **🌟 Remember**: Every great e-commerce empire starts with a single `git push`!!
+
